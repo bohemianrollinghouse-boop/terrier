@@ -1,0 +1,21 @@
+{
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "source": ".",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**", ".firestore-data/**", "import/**"],
+    "frameworksBackend": {
+      "region": "europe-west1",
+      "maxInstances": 2,
+      "memory": "512MiB",
+      "secrets": ["TERRIER_API_KEY"]
+    }
+  },
+  "emulators": {
+    "firestore": { "port": 8080 },
+    "ui": { "enabled": true, "port": 4000 },
+    "singleProjectMode": true
+  }
+}

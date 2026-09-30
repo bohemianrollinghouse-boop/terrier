@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// Toutes les écritures passent par les routes API du serveur, qui s'authentifient
+// avec les identifiants d'administration. Aucun client web ne parle directement
+// à Firestore : on ferme donc la porte côté règles.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

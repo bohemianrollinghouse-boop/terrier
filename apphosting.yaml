@@ -1,0 +1,41 @@
+# Configuration Firebase App Hosting.
+# Les valeurs NEXT_PUBLIC_* sont publiques par nature (elles finissent dans le
+# bundle du navigateur) ; la clé d'API Terrier, elle, vit dans Secret Manager :
+#   firebase apphosting:secrets:set TERRIER_API_KEY --project terrier-myenn
+
+runConfig:
+  cpu: 1
+  memoryMiB: 512
+  minInstances: 0
+  maxInstances: 2
+  concurrency: 80
+
+env:
+  - variable: FIREBASE_PROJECT_ID
+    value: terrier-myenn
+    availability: [RUNTIME]
+
+  # Seules ces adresses peuvent ouvrir l'espace. Vide = personne n'entre.
+  # Pour ajouter quelqu'un : séparer par des virgules, sans espace superflu.
+  #   value: bohemianrollinghouse@gmail.com,autre.personne@gmail.com
+  # Il faut une adresse Google (la connexion passe par Google), et un
+  # redéploiement pour que le changement prenne effet.
+  - variable: TERRIER_ALLOWED_EMAILS
+    value: bohemianrollinghouse@gmail.com
+    availability: [RUNTIME]
+
+  - variable: TERRIER_API_KEY
+    secret: TERRIER_API_KEY
+    availability: [RUNTIME]
+
+  - variable: NEXT_PUBLIC_FIREBASE_API_KEY
+    value: AIzaSyB7RAWRW_fn_Sglu_YgeAgT899JF2qn69M
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+    value: terrier-myenn.firebaseapp.com
+    availability: [BUILD, RUNTIME]
+
+  - variable: NEXT_PUBLIC_FIREBASE_PROJECT_ID
+    value: terrier-myenn
+    availability: [BUILD, RUNTIME]

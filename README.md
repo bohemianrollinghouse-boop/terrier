@@ -1,36 +1,137 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Terrier 🐰
 
-## Getting Started
+L'espace de notes de Myenn : pages imbriquées, éditeur par blocs, bases de données avec vues tableau et Kanban, recherche, corbeille, thème clair/sombre. Hébergé sur Firebase, données dans Firestore, accès réservé.
 
-First, run the development server:
+Le nom : le terrier, l'endroit où l'on garde tout au chaud — et un clin d'œil au lapin de *Mon Vrai*.
+
+## Démarrer en local
+
+Deux processus, dans deux terminaux :
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run emulator   # Firestore local, sauvegardé dans .firestore-data
+npm run dev        # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+L'émulateur évite d'avoir une clé de service sur le disque. Il garde ses données en mémoire : `npm run emulator` les réimporte au démarrage et les réexporte à l'arrêt, pour qu'elles survivent d'une session à l'autre. Si la base locale se retrouve vide malgré tout, `npm run import` la reconstruit depuis `import/` en quelques secondes. En local, tant que `TERRIER_ALLOWED_EMAILS` n'est pas défini dans `.env.local`, l'authentification est contournée (voir `lib/auth.ts`) — impossible en production, où `NODE_ENV=production` et où la liste vient d'`apphosting.yaml`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Autres commandes :
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build                      # build de production
+npm run lint                       # ESLint
+npx tsc --noEmit                   # types
+node scripts/import-notion.mjs     # (ré)importe import/ dans Firestore
+node scripts/generate-api-key.mjs  # fait tourner la clé d'API locale
+```
 
-## Learn More
+## Ce que l'app sait faire
 
-To learn more about Next.js, take a look at the following resources:
+**Pages** — arborescence illimitée, icône emoji, favoris, fil d'Ariane, duplication, corbeille avec restauration, recherche `Ctrl+K` sur titres, contenus **et** propriétés.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Éditeur par blocs** — texte, titres 1/2/3, listes à puces, numérotées, cases à cocher, listes à basculer, citations, encadrés, code, séparateurs, images. Menu `/`, raccourcis markdown (`# `, `- `, `1. `, `[] `, `> `, `>> `, ` ``` `, `---`), indentation `Tab`, gras/italique/souligné/barré/code inline, déplacement des blocs à la poignée, sauvegarde automatique.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+**Bases de données** — propriétés typées (texte, sélection, sélection multiple, case à cocher, date, nombre, URL), vue tableau avec édition en ligne, vue Kanban avec glisser-déposer entre colonnes, filtres et tris par vue. Chaque ligne est une vraie page : elle a ses propriétés en tête et son contenu en dessous.
 
-## Deploy on Vercel
+## Contenu importé depuis Notion
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Source Notion | Dans Terrier |
+| --- | --- |
+| Base « My Rolling Day — Suivi de dev » | Base `db-my-rolling-day` : 47 tâches, 10 propriétés, 5 vues (Tableau, Kanban, Bloquants, À faire à la main, Tout) |
+| Espace « Mon Vrai — Espace de marque » | Page racine 🐇 et ses 5 documents fondateurs |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+L'export brut vit dans `import/` (`tasks.json`, `pages.json`, `bodies/*.md`). `scripts/import-notion.mjs` le rejoue dans Firestore ; les identifiants étant dérivés de la source, relancer le script met à jour au lieu de dupliquer.
+
+**Reste à importer** : le corps des 47 fiches de tâches (leurs propriétés, elles, sont déjà toutes là), ainsi que les pages « Appli École à la Maison » et « 💡 Boîte à idées ».
+
+## Accès
+
+Deux portes, une seule identité derrière :
+
+- **Navigateur** — connexion Google, puis cookie de session signé par Firebase. Seules les adresses listées dans `TERRIER_ALLOWED_EMAILS` entrent. Liste vide = personne n'entre.
+- **Agent externe (ChatGPT, script)** — clé d'API dans l'en-tête `Authorization: Bearer …`, comparée à `TERRIER_API_KEY` en temps constant.
+
+La barre latérale affiche qui est connecté et propose un bouton **Se déconnecter**.
+
+### Ajouter quelqu'un
+
+Une adresse Google de plus dans `TERRIER_ALLOWED_EMAILS` (`apphosting.yaml`), séparée par une virgule, puis un redéploiement :
+
+```yaml
+value: bohemianrollinghouse@gmail.com,autre.personne@gmail.com
+```
+
+En local, la même variable dans `.env.local` — mais attention : dès qu'elle est définie, l'échappatoire de développement disparaît et il faut se connecter pour de bon.
+
+### Travailler à deux sur le même espace
+
+Tout est partagé : pas d'espace privé par personne. Chaque page porte une **révision**, incrémentée à chaque écriture.
+
+Quand deux personnes ouvrent la même page et que la seconde enregistre sur une version périmée, le serveur **refuse l'écriture** (409) au lieu d'écraser le travail de la première. L'éditeur affiche alors une bande d'avertissement nommant l'autre personne, avec deux issues : *Recharger sa version* (on abandonne ses modifications) ou *Garder la mienne* (on réécrit par-dessus en connaissance de cause).
+
+Ce n'est pas de l'édition collaborative temps réel : deux personnes sur la même page au même moment se gêneront toujours. C'est une protection contre la perte silencieuse de travail, pas un remplacement de Notion multijoueur. Travailler sur des pages différentes ne pose en revanche aucun problème.
+
+### Brancher ChatGPT
+
+1. Dans ChatGPT, créer un GPT personnalisé → **Actions** → **Importer depuis une URL** : `https://<domaine>/api/openapi.json`
+2. Authentification : **API Key**, type **Bearer**, valeur = `TERRIER_API_KEY`.
+
+Les actions exposées : lister et lire des pages, créer une page, remplacer le contenu d'une page, lister et ajouter des lignes de base (donc créer une tâche My Rolling Day ou changer son statut), rechercher. Rien qui supprime définitivement.
+
+## Déploiement Firebase
+
+Projet dédié : **`terrier-myenn`** (créé, application web enregistrée, `apphosting.yaml` prêt).
+
+Étapes restantes, qui demandent ton compte :
+
+1. **Passer le projet en plan Blaze** — le rendu serveur de Next.js l'exige. Gratuit sous les quotas, mais une carte est nécessaire.
+   → https://console.firebase.google.com/project/terrier-myenn/usage/details
+2. **Activer l'API Firestore**, puis créer la base :
+   → https://console.developers.google.com/apis/api/firestore.googleapis.com/overview?project=terrier-myenn
+   ```bash
+   firebase firestore:databases:create "(default)" --location=europe-west1 --project terrier-myenn
+   firebase deploy --only firestore:rules --project terrier-myenn
+   ```
+3. **Activer la connexion Google** dans Authentication → Sign-in method.
+4. **Déposer la clé d'API** dans Secret Manager :
+   ```bash
+   firebase apphosting:secrets:set TERRIER_API_KEY --project terrier-myenn
+   ```
+5. **Déployer**, puis rejouer l'import en visant le projet réel :
+   ```bash
+   FIRESTORE_EMULATOR_HOST= FIREBASE_PROJECT_ID=terrier-myenn node scripts/import-notion.mjs
+   ```
+
+## Architecture
+
+```
+app/
+  layout.tsx              thème lu dans un cookie, posé côté serveur (pas de script, pas de flash)
+  login/page.tsx          connexion Google
+  p/layout.tsx            garde d'accès + coquille (barre latérale, recherche, corbeille)
+  p/[id]/page.tsx         éditeur, ou vue base si la page est une base
+  api/…                   pages, blocs, lignes de base, recherche, corbeille, session, openapi
+components/
+  editor/                 éditeur par blocs (voir editor.tsx pour le clavier et le menu /)
+  database/               vues tableau et Kanban, cellules de propriétés
+lib/
+  db.ts                   accès Firestore
+  auth.ts                 session Google + clé d'API
+  types.ts                types partagés client/serveur
+  sanitize.ts             allowlist HTML inline
+```
+
+### Choix techniques
+
+- **Un document Firestore par page**, blocs inclus : une page se lit et s'écrit d'un coup, ce qui colle à la sauvegarde « document complet » du client. Une ligne de base est une page comme une autre, avec `dbId` renseigné.
+- **Aucun client web ne parle à Firestore** : tout passe par les routes API, et les règles de sécurité refusent tout accès direct.
+- **`contentEditable` non contrôlé** : React n'écrit dans le DOM que lorsque la valeur vient d'ailleurs, sinon le curseur sauterait à chaque frappe.
+- **Déplacements en pointer events** plutôt qu'en drag-and-drop HTML5 : précis, et fonctionne au doigt.
+
+## Limites connues
+
+- Pas d'édition collaborative temps réel : deux personnes sur la même page se gênent, la seconde écriture est refusée plutôt que fusionnée (voir « Travailler à deux »).
+- La recherche charge toutes les pages et filtre en mémoire. Parfait à cette échelle, à revoir au-delà de quelques centaines de pages.
+- Pas de coloration syntaxique dans les blocs de code (le langage sert d'étiquette).
+- Les vues de base ne se modifient pas encore depuis l'interface : filtres, tris et colonnes viennent de l'import.
+- Les images sont référencées par URL, il n'y a pas d'envoi de fichier.

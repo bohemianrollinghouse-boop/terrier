@@ -39,3 +39,23 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# base SQLite locale
+/data
+
+# secrets et base locale
+.env.local
+.env*.local
+/data
+
+# export local de l'émulateur Firestore
+/.firestore-data
+
+# artefacts de déploiement et de débogage
+/.firebase
+firestore-debug.log
+
+# Export Notion : contient les textes de marque Mon Vrai.
+# Volontairement hors du dépôt — ces fichiers ne servent qu'à l'import local,
+# jamais à la construction du site. Retirer cette ligne pour les versionner.
+/import
