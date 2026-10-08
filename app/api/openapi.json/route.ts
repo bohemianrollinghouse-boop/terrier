@@ -9,7 +9,14 @@ export const dynamic = "force-dynamic";
  * définitivement.
  */
 export async function GET(request: Request) {
-  const origin = new URL(request.url).origin;
+  // Derrière le proxy App Hosting, request.url porte l'adresse interne du
+  // conteneur (0.0.0.0:8080) : le schéma annoncerait une API injoignable. Le
+  // domaine public n'arrive que par les en-têtes de transfert.
+  const headers = request.headers;
+  const host = headers.get("x-forwarded-host") ?? headers.get("host") ?? new URL(request.url).host;
+  const enLocal = host.startsWith("localhost") || host.startsWith("127.");
+  const proto = headers.get("x-forwarded-proto") ?? (enLocal ? "http" : "https");
+  const origin = `${proto}://${host}`;
 
   const schema = {
     openapi: "3.1.0",
