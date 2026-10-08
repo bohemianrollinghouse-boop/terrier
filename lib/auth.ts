@@ -46,18 +46,30 @@ function devBypass(): Viewer | null {
   if (process.env.TERRIER_ALLOWED_EMAILS) return null;
   return { email: "dev@localhost", via: "session" };
 }
+/**
+ * La cle d'API presentee est-elle la bonne ? Comparaison a longueur constante,
+ * pour ne pas laisser deviner la cle octet par octet.
+ *
+ * Exportee parce que le serveur MCP l'accepte aussi dans l'URL : son client ne
+ * sait pas toujours poser un en-tete.
+ */
+export function apiKeyMatches(presented: string): boolean {
+  const key = process.env.TERRIER_API_KEY;
+  if (!key || !presented) return false;
+  if (presented.length !== key.length) return false;
+  return timingSafeEqual(presented, key);
+}
+
 
 /** Identifie l'appelant, ou null s'il n'a rien de valable à présenter. */
 export async function currentViewer(request?: Request): Promise<Viewer | null> {
   const bypass = devBypass();
   if (bypass) return bypass;
 
-  const key = process.env.TERRIER_API_KEY;
-  if (key && request) {
+  if (request) {
     const header = request.headers.get("authorization") ?? request.headers.get("x-api-key") ?? "";
     const presented = header.replace(/^Bearer\s+/i, "").trim();
-    // Comparaison à longueur constante pour ne pas laisser fuiter la clé octet par octet.
-    if (presented && presented.length === key.length && timingSafeEqual(presented, key)) {
+    if (apiKeyMatches(presented)) {
       return { email: "api-key", via: "api-key" };
     }
   }
