@@ -21,7 +21,8 @@ Autres commandes :
 npm run build                      # build de production
 npm run lint                       # ESLint
 npx tsc --noEmit                   # types
-node scripts/import-notion.mjs     # (ré)importe import/ dans Firestore
+node scripts/import-notion.mjs     # (ré)importe import/ dans Firestore (identifiants Google requis)
+node scripts/import-via-api.mjs    # même import, par l'API HTTP, avec la clé pour seul sésame
 node scripts/generate-api-key.mjs  # fait tourner la clé d'API locale
 ```
 
@@ -73,34 +74,29 @@ Ce n'est pas de l'édition collaborative temps réel : deux personnes sur la mê
 
 ### Brancher ChatGPT
 
-1. Dans ChatGPT, créer un GPT personnalisé → **Actions** → **Importer depuis une URL** : `https://<domaine>/api/openapi.json`
+1. Dans ChatGPT, créer un GPT personnalisé → **Actions** → **Importer depuis une URL** : `https://terrier--terrier-myenn.europe-west4.hosted.app/api/openapi.json`
 2. Authentification : **API Key**, type **Bearer**, valeur = `TERRIER_API_KEY`.
 
 Les actions exposées : lister et lire des pages, créer une page, remplacer le contenu d'une page, lister et ajouter des lignes de base (donc créer une tâche My Rolling Day ou changer son statut), rechercher. Rien qui supprime définitivement.
 
-## Déploiement Firebase
+## Déploiement
 
-Projet dédié : **`terrier-myenn`** (créé, application web enregistrée, `apphosting.yaml` prêt).
+En ligne : **https://terrier--terrier-myenn.europe-west4.hosted.app**
 
-Étapes restantes, qui demandent ton compte :
+Projet Firebase **`terrier-myenn`** (plan Blaze), backend App Hosting `terrier` en
+**europe-west4**, branché sur la branche `main` de ce dépôt : **chaque push redéploie**,
+en trois minutes environ. La base Firestore, elle, vit en europe-west1 — App Hosting n'y
+étant pas proposé, les deux régions diffèrent, sans conséquence perceptible.
 
-1. **Passer le projet en plan Blaze** — le rendu serveur de Next.js l'exige. Gratuit sous les quotas, mais une carte est nécessaire.
-   → https://console.firebase.google.com/project/terrier-myenn/usage/details
-2. **Activer l'API Firestore**, puis créer la base :
-   → https://console.developers.google.com/apis/api/firestore.googleapis.com/overview?project=terrier-myenn
-   ```bash
-   firebase firestore:databases:create "(default)" --location=europe-west1 --project terrier-myenn
-   firebase deploy --only firestore:rules --project terrier-myenn
-   ```
-3. **Activer la connexion Google** dans Authentication → Sign-in method.
-4. **Déposer la clé d'API** dans Secret Manager :
-   ```bash
-   firebase apphosting:secrets:set TERRIER_API_KEY --project terrier-myenn
-   ```
-5. **Déployer**, puis rejouer l'import en visant le projet réel :
-   ```bash
-   FIRESTORE_EMULATOR_HOST= FIREBASE_PROJECT_ID=terrier-myenn node scripts/import-notion.mjs
-   ```
+La clé d'API est dans Secret Manager, et le compte de service du backend a reçu le droit
+de la lire (`firebase apphosting:secrets:grantaccess`). Un backend recréé devrait recevoir
+ce droit à nouveau, faute de quoi il démarre sur « Secret mal configuré ».
+
+Déployer à la main, sans passer par un push :
+
+```bash
+firebase apphosting:rollouts:create terrier --git-branch main --project terrier-myenn
+```
 
 ## Architecture
 
