@@ -3,11 +3,14 @@
 # bundle du navigateur) ; la clé d'API Terrier, elle, vit dans Secret Manager :
 #   firebase apphosting:secrets:set TERRIER_API_KEY --project terrier-myenn
 
+# Un espace de notes personnel n'a pas besoin de s'étendre : une seule machine,
+# allumée à la demande et éteinte au repos, absorbe largement la charge. Le
+# plafond est là pour borner la facture, pas la performance.
 runConfig:
   cpu: 1
   memoryMiB: 512
   minInstances: 0
-  maxInstances: 2
+  maxInstances: 1
   concurrency: 80
 
 env:
